@@ -58,8 +58,23 @@ from isaaclab.envs import (
     multi_agent_to_single_agent,
 )
 from isaaclab.utils.dict import print_dict
-from isaaclab.utils.io import dump_pickle, dump_yaml
-from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
+from isaaclab.utils.io import dump_yaml
+
+
+def dump_pickle(filename: str, data: object):
+    """Saves data into a pickle file safely, creating missing directories.
+
+    IsaacLab v6 removed ``dump_pickle`` from ``isaaclab.utils.io``; this local
+    helper preserves the previous behavior of writing the config snapshots.
+    """
+    import pickle
+
+    if not filename.endswith("pkl"):
+        filename += ".pkl"
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, "wb") as f:
+        pickle.dump(data, f)
+from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper, handle_deprecated_rsl_rl_cfg
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
@@ -82,6 +97,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     agent_cfg.max_iterations = (
         args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
     )
+
+    # handle deprecated rsl-rl configurations (e.g. strip legacy `stochastic`/`init_noise_std`
+    # model fields for rsl-rl >= 5.0.0, migrating them to `distribution_cfg`)
+    import importlib.metadata as _metadata
+
+    agent_cfg = handle_deprecated_rsl_rl_cfg(agent_cfg, _metadata.version("rsl-rl-lib"))
 
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here

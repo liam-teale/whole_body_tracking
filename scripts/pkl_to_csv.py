@@ -26,8 +26,10 @@ def convert(input_file: Path, output_file: Path) -> None:
         raise TypeError(f"Expected pickle to contain a dict, got {type(data).__name__}")
 
     root_pos = _as_array(data, "root_pos", (3,))
+    # GMR already exports root_rot as xyzw (its export scripts convert MuJoCo's wxyz qpos
+    # via [1, 2, 3, 0] before saving), which matches the IsaacLab 3.x / csv_to_npz convention.
+    # Do NOT reorder again here — doing so scrambles the quaternion and tips the robot ~90°.
     root_rot = _as_array(data, "root_rot", (4,))
-    root_rot = root_rot[:, [1, 2, 3, 0]]  # wxyz → xyzw (IsaacLab 3.x convention)
     dof_pos = _as_array(data, "dof_pos", (29,))
 
     frame_count = root_pos.shape[0]
