@@ -27,6 +27,10 @@ G1_CYLINDER_CFG = ArticulationCfg(
         fix_base=False,
         replace_cylinders_with_capsules=True,
         asset_path=f"{ASSET_DIR}/unitree_description/urdf/g1/main.urdf",
+        # URDF importer 3.0 needs an explicit package->path mapping to resolve the
+        # `package://unitree_description/...` mesh URLs; without it the visual meshes
+        # are silently dropped and the robot renders invisible.
+        ros_package_paths=[{"name": "unitree_description", "path": f"{ASSET_DIR}/unitree_description"}],
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
