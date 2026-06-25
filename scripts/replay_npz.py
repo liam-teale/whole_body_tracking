@@ -91,19 +91,20 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
         reset_ids = time_steps >= motion.time_step_total
         time_steps[reset_ids] = 0
 
-        root_states = robot.data.default_root_state.clone()
-        root_states[:, :3] = motion.body_pos_w[time_steps][:, 0] + scene.env_origins[:, None, :]
-        root_states[:, 3:7] = motion.body_quat_w[time_steps][:, 0]
-        root_states[:, 7:10] = motion.body_lin_vel_w[time_steps][:, 0]
-        root_states[:, 10:] = motion.body_ang_vel_w[time_steps][:, 0]
+        root_pos = motion.body_pos_w[time_steps][:, 0] + scene.env_origins
+        root_quat = motion.body_quat_w[time_steps][:, 0]
+        root_lin_vel = motion.body_lin_vel_w[time_steps][:, 0]
+        root_ang_vel = motion.body_ang_vel_w[time_steps][:, 0]
 
-        robot.write_root_state_to_sim(root_states)
-        robot.write_joint_state_to_sim(motion.joint_pos[time_steps], motion.joint_vel[time_steps])
+        robot.write_root_pose_to_sim_index(root_pose=torch.cat([root_pos, root_quat], dim=-1))
+        robot.write_root_velocity_to_sim_index(root_velocity=torch.cat([root_lin_vel, root_ang_vel], dim=-1))
+        robot.write_joint_position_to_sim_index(position=motion.joint_pos[time_steps])
+        robot.write_joint_velocity_to_sim_index(velocity=motion.joint_vel[time_steps])
         scene.write_data_to_sim()
         sim.render()  # We don't want physic (sim.step())
         scene.update(sim_dt)
 
-        pos_lookat = root_states[0, :3].cpu().numpy()
+        pos_lookat = root_pos[0].cpu().numpy()
         sim.set_camera_view(pos_lookat + np.array([2.0, 2.0, 0.5]), pos_lookat)
 
 

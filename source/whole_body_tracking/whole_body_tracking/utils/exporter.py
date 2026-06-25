@@ -62,7 +62,7 @@ class _OnnxMotionPolicyExporter(_OnnxPolicyExporter):
             (obs, time_step),
             os.path.join(path, filename),
             export_params=True,
-            opset_version=11,
+            opset_version=18,
             verbose=self.verbose,
             input_names=["obs", "time_step"],
             output_names=[
@@ -102,9 +102,9 @@ def attach_onnx_metadata(env: ManagerBasedRLEnv, run_path: str, path: str, filen
     metadata = {
         "run_path": run_path,
         "joint_names": env.scene["robot"].data.joint_names,
-        "joint_stiffness": env.scene["robot"].data.joint_stiffness[0].cpu().tolist(),
-        "joint_damping": env.scene["robot"].data.joint_damping[0].cpu().tolist(),
-        "default_joint_pos": env.scene["robot"].data.default_joint_pos_nominal.cpu().tolist(),
+        "joint_stiffness": env.scene["robot"].data.joint_stiffness.torch[0].cpu().tolist(),
+        "joint_damping": env.scene["robot"].data.joint_damping.torch[0].cpu().tolist(),
+        "default_joint_pos": env.scene["robot"].default_joint_pos_nominal.cpu().tolist(),
         "command_names": env.command_manager.active_terms,
         "observation_names": observation_names,
         "observation_history_lengths": observation_history_lengths,
