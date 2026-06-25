@@ -96,6 +96,7 @@ class _OnnxMotionPolicyExporter(torch.nn.Module):
                 "body_ang_vel_w",
             ],
             dynamic_axes={},
+            dynamo=False,
         )
 
 
