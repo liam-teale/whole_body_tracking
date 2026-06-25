@@ -3,14 +3,16 @@
 .. code-block:: bash
 
     # Usage
-    python replay_motion.py --motion_file source/whole_body_tracking/whole_body_tracking/assets/g1/motions/lafan_walk_short.npz
+    python replay_npz.py --registry_name <wandb-registry-name>
 """
 
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import pathlib
 import numpy as np
 import torch
+import wandb
 
 from isaaclab.app import AppLauncher
 
@@ -22,6 +24,20 @@ parser.add_argument("--registry_name", type=str, required=True, help="The name o
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
 args_cli = parser.parse_args()
+
+# download motion file before launching Isaac Sim so the timeline doesn't stall
+registry_name = args_cli.registry_name
+if ":" not in registry_name:
+    registry_name += ":latest"
+api = wandb.Api()
+artifact = api.artifact(registry_name)
+motion_file = str(pathlib.Path(artifact.download()) / "motion.npz")
+
+# IsaacLab v6 launches headless unless a Kit visualizer is requested. This is a replay
+# tool, so default to the GUI viewport unless the user opted out (--headless or --viz).
+if getattr(args_cli, "visualizer", None) is None and not args_cli.headless:
+    args_cli.visualizer = ["kit"]
+    args_cli.visualizer_explicit = True
 
 # launch omniverse app
 app_launcher = AppLauncher(args_cli)
@@ -62,21 +78,8 @@ class ReplayMotionsSceneCfg(InteractiveSceneCfg):
 
 
 def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
-    # Extract scene entities
     robot: Articulation = scene["robot"]
-    # Define simulation stepping
     sim_dt = sim.get_physics_dt()
-
-    registry_name = args_cli.registry_name
-    if ":" not in registry_name:  # Check if the registry name includes alias, if not, append ":latest"
-        registry_name += ":latest"
-    import pathlib
-
-    import wandb
-
-    api = wandb.Api()
-    artifact = api.artifact(registry_name)
-    motion_file = str(pathlib.Path(artifact.download()) / "motion.npz")
 
     motion = MotionLoader(
         motion_file,
@@ -96,12 +99,12 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
         root_lin_vel = motion.body_lin_vel_w[time_steps][:, 0]
         root_ang_vel = motion.body_ang_vel_w[time_steps][:, 0]
 
-        robot.write_root_pose_to_sim_index(root_pose=torch.cat([root_pos, root_quat], dim=-1))
-        robot.write_root_velocity_to_sim_index(root_velocity=torch.cat([root_lin_vel, root_ang_vel], dim=-1))
-        robot.write_joint_position_to_sim_index(position=motion.joint_pos[time_steps])
-        robot.write_joint_velocity_to_sim_index(velocity=motion.joint_vel[time_steps])
+        robot.write_root_pose_to_sim(root_pose=torch.cat([root_pos, root_quat], dim=-1))
+        robot.write_root_velocity_to_sim(root_velocity=torch.cat([root_lin_vel, root_ang_vel], dim=-1))
+        robot.write_joint_position_to_sim(position=motion.joint_pos[time_steps])
+        robot.write_joint_velocity_to_sim(velocity=motion.joint_vel[time_steps])
         scene.write_data_to_sim()
-        sim.render()  # We don't want physic (sim.step())
+        sim.step(render=True)  # kinematic replay — physics output is overwritten each frame
         scene.update(sim_dt)
 
         pos_lookat = root_pos[0].cpu().numpy()
@@ -116,12 +119,9 @@ def main():
     scene_cfg = ReplayMotionsSceneCfg(num_envs=1, env_spacing=2.0)
     scene = InteractiveScene(scene_cfg)
     sim.reset()
-    # Run the simulator
     run_simulator(sim, scene)
 
 
 if __name__ == "__main__":
-    # run the main function
     main()
-    # close sim app
     simulation_app.close()

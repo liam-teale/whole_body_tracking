@@ -270,13 +270,13 @@ class MotionCommand(CommandTerm):
         joint_pos[env_ids] = torch.clip(
             joint_pos[env_ids], soft_joint_pos_limits[:, :, 0], soft_joint_pos_limits[:, :, 1]
         )
-        self.robot.write_joint_position_to_sim_index(position=joint_pos[env_ids], env_ids=env_ids)
-        self.robot.write_joint_velocity_to_sim_index(velocity=joint_vel[env_ids], env_ids=env_ids)
-        self.robot.write_root_pose_to_sim_index(
+        self.robot.write_joint_position_to_sim(position=joint_pos[env_ids], env_ids=env_ids)
+        self.robot.write_joint_velocity_to_sim(velocity=joint_vel[env_ids], env_ids=env_ids)
+        self.robot.write_root_pose_to_sim(
             root_pose=torch.cat([root_pos[env_ids], root_ori[env_ids]], dim=-1),
             env_ids=env_ids,
         )
-        self.robot.write_root_velocity_to_sim_index(
+        self.robot.write_root_velocity_to_sim(
             root_velocity=torch.cat([root_lin_vel[env_ids], root_ang_vel[env_ids]], dim=-1),
             env_ids=env_ids,
         )

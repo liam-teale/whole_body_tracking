@@ -260,8 +260,8 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, joi
         # set root state
         root_pos = motion_base_pos.clone()
         root_pos[:, :2] += scene.env_origins[:, :2]
-        robot.write_root_pose_to_sim_index(root_pose=torch.cat([root_pos, motion_base_rot], dim=-1))
-        robot.write_root_velocity_to_sim_index(
+        robot.write_root_pose_to_sim(root_pose=torch.cat([root_pos, motion_base_rot], dim=-1))
+        robot.write_root_velocity_to_sim(
             root_velocity=torch.cat([motion_base_lin_vel, motion_base_ang_vel], dim=-1)
         )
 
@@ -270,9 +270,9 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, joi
         joint_vel = robot.data.default_joint_vel.torch.clone()
         joint_pos[:, robot_joint_indexes] = motion_dof_pos
         joint_vel[:, robot_joint_indexes] = motion_dof_vel
-        robot.write_joint_position_to_sim_index(position=joint_pos)
-        robot.write_joint_velocity_to_sim_index(velocity=joint_vel)
-        sim.render()  # We don't want physic (sim.step())
+        robot.write_joint_position_to_sim(position=joint_pos)
+        robot.write_joint_velocity_to_sim(velocity=joint_vel)
+        sim.step(render=True)  # kinematic replay — physics output is overwritten each frame
         scene.update(sim.get_physics_dt())
 
         pos_lookat = root_pos[0].cpu().numpy()
